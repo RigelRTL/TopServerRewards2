@@ -1,0 +1,109 @@
+# ════════════════════════════════════════════════════════════════
+#  TopServerRewards - Konfiguracja v2.0
+# ════════════════════════════════════════════════════════════════
+
+# URL do API TopServer.pl (NIE ZMIENIAJ)
+api-url: "https://topserver.pl/api_rewards.php"
+
+# ZMIEŃ TO NA IP TWOJEGO SERWERA!
+server-ip: "twoj.serwer.pl"  ← ZMIEŃ TO!
+
+# ════════════════════════════════════════════════════════════════
+#  KOMENDY
+#  Po zmianie "main" zmień też nazwę w plugin.yml!
+# ════════════════════════════════════════════════════════════════
+
+commands:
+  main: "ts"
+  claim-sub: "odbierz"
+
+# ════════════════════════════════════════════════════════════════
+#  WIADOMOŚCI
+#
+#  Kolory: &a zielony, &c czerwony, &e żółty, &b błękitny,
+#          &6 złoty, &7 szary, &f biały, &l pogrubiony, &r reset
+#
+#  Wyłączenie wiadomości: ustaw wartość "" lub false
+#  Przykład: checking: ""       <- wiadomość wyłączona
+#            checking: false    <- wiadomość wyłączona
+#
+#  Placeholdery:
+#    {command}     - pełna komenda np. /ts odbierz
+#    {seconds}     - sekundy cooldownu
+#    {error}       - treść błędu z API
+#    {server}      - nazwa serwera z API
+#    {player}      - nick gracza
+#    {amount}      - kwota pieniędzy
+#    {api_message} - wiadomość z API (tylko w no-reward)
+# ════════════════════════════════════════════════════════════════
+
+messages:
+
+  help:
+    line-top:       "&6═══════════════════════════════"
+    title:          "&e  TopServer.pl - Nagrody"
+    line-separator: "&6═══════════════════════════════"
+    usage:          "&7Użyj: &f{command} &7- odbierz nagrodę za głos"
+    vote-url:       "&7Zagłosuj na: &bTopServer.pl"
+    line-bottom:    "&6═══════════════════════════════"
+
+  cooldown:         "&cPoczekaj &e{seconds}s &cprzed kolejną próbą!"
+
+  no-permission:    "&cNie masz uprawnień do odbierania nagród!"
+
+  config-error:     "&cBłąd konfiguracji serwera!"
+  config-error-hint: "&ePowiadom admina aby ustawił 'server-ip' w config.yml"
+
+  checking:         "&eSprawdzam nagrody..."
+
+  api-error:        "&cBłąd połączenia z API TopServer.pl!"
+  api-error-hint:   "&7Sprawdź połączenie internetowe serwera"
+
+  api-fail:         "&cBłąd: &7{error}"
+
+  no-reward:        "&e{api_message}"
+  no-reward-hint:   false
+
+  claim-error:      "&cBłąd podczas odbierania nagrody!"
+  claim-fail:       "&cBłąd: &7{error}"
+
+  unexpected-error: "&cWystąpił nieoczekiwany błąd. Spróbuj ponownie."
+
+  claimed:
+    line-top:    "&6═══════════════════════════════"
+    success:     "&a✔ Nagroda została odebrana!"
+    server:      "&7Serwer: &f{server}"
+    thanks:      "&7Dziękujemy za głos! &e❤"
+    line-bottom: "&6═══════════════════════════════"
+
+  broadcast:        "&e{player} &7odebrał nagrodę za głos na &bTopServer.pl"
+
+  rewards-disabled: "&cNagrody są tymczasowo wyłączone!"
+
+  money-received:   "&a+ &2{amount} &amonet"
+
+# ════════════════════════════════════════════════════════════════
+#  NAGRODY
+# ════════════════════════════════════════════════════════════════
+
+rewards:
+  enabled: true
+  broadcast: true
+
+  items:
+    enabled: true
+    list:
+      - "DIAMOND:5"
+      - "EMERALD:3"
+      - "GOLDEN_APPLE:1"
+      - "EXPERIENCE_BOTTLE:10"
+
+  commands:
+    enabled: false
+    list:
+      - "give {player} diamond_sword 1"
+      - "eco give {player} 500"
+
+  money:
+    enabled: false
+    amount: 100.0
