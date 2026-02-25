@@ -82,6 +82,9 @@ messages:
 
   money-received:   "&a+ &2{amount} &amonet"
 
+  reload-success: "&aPomyślnie przeładowano konfigurację TopServerRewards!"
+  reload-no-permission: "&cNie masz uprawnień do przeładowania pluginu!"
+
 # ════════════════════════════════════════════════════════════════
 #  NAGRODY
 # ════════════════════════════════════════════════════════════════

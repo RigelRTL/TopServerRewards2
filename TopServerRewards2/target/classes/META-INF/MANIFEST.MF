@@ -1,3 +1,0 @@
-Manifest-Version: 1.0
-Created-By: TopServer.pl
-Main-Class: eu.topserver.rewards.TopServerRewards

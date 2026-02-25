@@ -1,10 +1,11 @@
-package eu.topserver.rewards;
+package pl.topserver.rewards;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -27,13 +28,20 @@ public class TopServerRewards extends JavaPlugin {
     private String apiUrl;
     private String serverIp;
     private Map<UUID, Long> cooldowns = new HashMap<>();
+    private ReloadCommand reloadCommand;
     private static final long COOLDOWN_TIME = 5000;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
-        apiUrl   = getConfig().getString("api-url", "https://topserver.pl/api_rewards.php");
-        serverIp = getConfig().getString("server-ip", "");
+        loadConfigValues();
+
+        reloadCommand = new ReloadCommand(this);
+
+        PluginCommand tsCmd = getCommand("ts");
+        if (tsCmd != null) {
+            tsCmd.setTabCompleter(new TSTabCompleter(this));
+        }
 
         getLogger().info("TopServerRewards zostal wlaczony!");
         getLogger().info("API URL: " + apiUrl);
@@ -51,6 +59,21 @@ public class TopServerRewards extends JavaPlugin {
         }
     }
 
+    private void loadConfigValues() {
+        apiUrl = getConfig().getString("api-url", "https://topserver.pl/api_rewards.php");
+        serverIp = getConfig().getString("server-ip", "");
+    }
+
+    /**
+     * Przeładowuje konfigurację pluginu.
+     * Wywoływane przez ReloadCommand.
+     */
+    public void reloadPluginConfig() {
+        reloadConfig();
+        loadConfigValues();
+        getLogger().info("Konfiguracja zostala przeladowana.");
+    }
+
     @Override
     public void onDisable() {
         getLogger().info("TopServerRewards zostal wylaczony!");
@@ -58,18 +81,21 @@ public class TopServerRewards extends JavaPlugin {
 
     private String msg(String path) {
         String raw = getConfig().getString(path, "");
-        if (raw == null || raw.isEmpty() || raw.equalsIgnoreCase("false")) return null;
+        if (raw == null || raw.isEmpty() || raw.equalsIgnoreCase("false"))
+            return null;
         return ChatColor.translateAlternateColorCodes('&', raw);
     }
 
     private void send(Player player, String path) {
         String m = msg(path);
-        if (m != null) player.sendMessage(m);
+        if (m != null)
+            player.sendMessage(m);
     }
 
     private void send(Player player, String path, String... replacements) {
         String m = msg(path);
-        if (m == null) return;
+        if (m == null)
+            return;
         for (int i = 0; i + 1 < replacements.length; i += 2)
             m = m.replace(replacements[i], replacements[i + 1]);
         player.sendMessage(m);
@@ -77,6 +103,14 @@ public class TopServerRewards extends JavaPlugin {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (!command.getName().equalsIgnoreCase("ts"))
+            return false;
+
+        if (args.length > 0 && args[0].equalsIgnoreCase("reload")) {
+            reloadCommand.execute(sender);
+            return true;
+        }
+
         if (!(sender instanceof Player)) {
             sender.sendMessage(ChatColor.RED + "Ta komenda moze byc uzyta tylko przez gracza!");
             return true;
@@ -84,26 +118,22 @@ public class TopServerRewards extends JavaPlugin {
 
         Player player = (Player) sender;
 
-        if (command.getName().equalsIgnoreCase("ts")) {
-            if (args.length == 0) {
-                showHelp(player);
-                return true;
-            }
-
-            String claimSub = getConfig().getString("commands.claim-sub", "odbierz");
-            if (args[0].equalsIgnoreCase(claimSub)) {
-                claimReward(player);
-            } else {
-                showHelp(player);
-            }
+        if (args.length == 0) {
+            showHelp(player);
             return true;
         }
 
-        return false;
+        String claimSub = getConfig().getString("commands.claim-sub", "odbierz");
+        if (args[0].equalsIgnoreCase(claimSub)) {
+            claimReward(player);
+        } else {
+            showHelp(player);
+        }
+        return true;
     }
 
     private void showHelp(Player player) {
-        String mainCmd  = getConfig().getString("commands.main", "ts");
+        String mainCmd = getConfig().getString("commands.main", "ts");
         String claimSub = getConfig().getString("commands.claim-sub", "odbierz");
 
         send(player, "messages.help.line-top");
@@ -115,7 +145,12 @@ public class TopServerRewards extends JavaPlugin {
     }
 
     private void claimReward(Player player) {
-        UUID playerId    = player.getUniqueId();
+        if (!player.hasPermission("topserver.claim")) {
+            send(player, "messages.no-permission");
+            return;
+        }
+
+        UUID playerId = player.getUniqueId();
         long currentTime = System.currentTimeMillis();
 
         if (cooldowns.containsKey(playerId)) {
@@ -128,11 +163,6 @@ public class TopServerRewards extends JavaPlugin {
         }
 
         cooldowns.put(playerId, currentTime);
-
-        if (!player.hasPermission("topserver.claim")) {
-            send(player, "messages.no-permission");
-            return;
-        }
 
         if (serverIp.isEmpty()) {
             send(player, "messages.config-error");
@@ -162,7 +192,7 @@ public class TopServerRewards extends JavaPlugin {
 
                 boolean hasReward = (boolean) checkResponse.getOrDefault("has_reward", false);
                 if (!hasReward) {
-                    String apiMessage  = (String) checkResponse.getOrDefault("message", "");
+                    String apiMessage = (String) checkResponse.getOrDefault("message", "");
                     String noRewardMsg = msg("messages.no-reward");
                     if (noRewardMsg != null)
                         player.sendMessage(noRewardMsg.replace("{api_message}", apiMessage));
@@ -170,8 +200,8 @@ public class TopServerRewards extends JavaPlugin {
                     return;
                 }
 
-                long   voteId     = ((Number) checkResponse.get("vote_id")).longValue();
-                String serverName = (String)  checkResponse.get("server_name");
+                long voteId = ((Number) checkResponse.get("vote_id")).longValue();
+                String serverName = (String) checkResponse.get("server_name");
 
                 JSONObject claimResponse = makeApiRequest("claim", playerName, voteId);
                 if (claimResponse == null) {
@@ -219,9 +249,9 @@ public class TopServerRewards extends JavaPlugin {
         if (getConfig().getBoolean("rewards.items.enabled", true)) {
             for (String itemString : getConfig().getStringList("rewards.items.list")) {
                 try {
-                    String[] parts    = itemString.split(":");
+                    String[] parts = itemString.split(":");
                     Material material = Material.valueOf(parts[0]);
-                    int amount        = parts.length > 1 ? Integer.parseInt(parts[1]) : 1;
+                    int amount = parts.length > 1 ? Integer.parseInt(parts[1]) : 1;
                     player.getInventory().addItem(new ItemStack(material, amount));
                 } catch (Exception e) {
                     getLogger().warning("Nieprawidlowy item: " + itemString);
@@ -245,7 +275,8 @@ public class TopServerRewards extends JavaPlugin {
         urlBuilder.append("?action=").append(action);
         urlBuilder.append("&nick=").append(URLEncoder.encode(playerName, StandardCharsets.UTF_8.toString()));
         urlBuilder.append("&server_ip=").append(URLEncoder.encode(serverIp, StandardCharsets.UTF_8.toString()));
-        if (voteId != null) urlBuilder.append("&vote_id=").append(voteId);
+        if (voteId != null)
+            urlBuilder.append("&vote_id=").append(voteId);
 
         URL url = new URL(urlBuilder.toString());
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
@@ -258,7 +289,8 @@ public class TopServerRewards extends JavaPlugin {
             BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
             StringBuilder response = new StringBuilder();
             String line;
-            while ((line = in.readLine()) != null) response.append(line);
+            while ((line = in.readLine()) != null)
+                response.append(line);
             in.close();
             return (JSONObject) new JSONParser().parse(response.toString());
         }
